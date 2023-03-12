@@ -26,7 +26,7 @@
     <ClInclude Include="src\renderer.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\shader.h">
+    <ClInclude Include="src\vendor\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\camera.h">
@@ -44,9 +44,6 @@
     <ClInclude Include="src\game.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\vendor\noise\perlin.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\vendor\noise\noise1234.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -54,5 +51,7 @@
   <ItemGroup>
     <None Include="res\shaders\vertex.glsl" />
     <None Include="res\shaders\fragment.glsl" />
+    <None Include="game_data\terrain" />
+    <None Include="res\shaders\compute.glsl" />
   </ItemGroup>
 </Project>

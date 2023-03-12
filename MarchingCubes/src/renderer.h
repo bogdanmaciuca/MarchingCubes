@@ -2,7 +2,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include "shader.h"
+#include "vendor/shader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "vendor/stb_image.h"
@@ -11,6 +11,8 @@ typedef GLFWwindow* Window;
 namespace gfx {
 	Window Init(const char* name, int width, int height) {
 		if (!glfwInit()) return 0;
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		Window window = glfwCreateWindow(width, height, name, 0, 0);
 		if (!window) return 0;
 		glfwMakeContextCurrent(window);
@@ -24,7 +26,10 @@ namespace gfx {
 	}
 	bool WindowShouldClose(Window window) { return glfwWindowShouldClose(window); }
 	void BeginFrame() { glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); }
-	void EndFrame(Window window) { glfwSwapBuffers(window); glfwPollEvents(); }
+	void EndFrame(Window window) {
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
 	void SetBkgColour(float r, float g, float b) { glClearColor(r, g, b, 1); }
 
 	void BindVAO(unsigned int VAO) { glBindVertexArray(VAO); }
@@ -55,7 +60,6 @@ namespace gfx {
 		// normal attribute
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
-
 	}
 	unsigned int LoadTexture(const char* filename) {
 		unsigned int result;
@@ -80,5 +84,18 @@ namespace gfx {
 		}
 		stbi_image_free(data);
 		return result;
+	}
+	unsigned int CreateSSBO(const ComputeShader& compute_shader, const char* name, const int& binding) {
+		GLuint SSBO;
+		glGenBuffers(1, &SSBO);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
+		int block_index = glGetProgramResourceIndex(compute_shader.ID, GL_SHADER_STORAGE_BLOCK, name);
+		glShaderStorageBlockBinding(compute_shader.ID, block_index, binding);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, SSBO);
+		return SSBO;
+	}
+	void SetSSBOData(unsigned int ssbo, void* data, int size) {
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_DYNAMIC_DRAW);
 	}
 }

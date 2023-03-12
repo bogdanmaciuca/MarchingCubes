@@ -9,6 +9,8 @@
 
 #define TERRAIN_SURFACE 127
 
+#define SAVE_FILE_PATH "game_data/terrain"
+
 enum {
 	CELL_AIR = 0,
 	CELL_DIRT,
@@ -18,4 +20,3 @@ enum {
 struct Cell {
 	BYTE terrain;
 };
-typedef Cell*** World;

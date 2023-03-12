@@ -104,13 +104,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\GLEW\include;D:\glfw64\include;D:\GLM\glm;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\ProgrammingProjects\Utils\glm-master\;E:\ProgrammingProjects\Utils\glfw-3.3.8.bin.WIN64\include\;E:\ProgrammingProjects\Utils\glew-2.1.0\include\;</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\GLEW\lib\Release\x64;D:\glfw64\lib-vc2022;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>E:\ProgrammingProjects\Utils\glew-2.1.0\lib\Release\x64\;E:\ProgrammingProjects\Utils\glfw-3.3.8.bin.WIN64\lib-vc2022\;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -136,16 +136,17 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\vendor\noise\noise1234.c" />
     <ClInclude Include="src\vendor\noise\noise1234.h" />
-    <ClInclude Include="src\vendor\noise\perlin.h" />
     <ClInclude Include="src\camera.h" />
     <ClInclude Include="src\game.h" />
     <ClInclude Include="src\marching_cubes.h" />
     <ClInclude Include="src\renderer.h" />
-    <ClInclude Include="src\shader.h" />
+    <ClInclude Include="src\vendor\shader.h" />
     <ClInclude Include="src\vendor\stb_image.h" />
     <ClInclude Include="src\water.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="game_data\terrain" />
+    <None Include="res\shaders\compute.glsl" />
     <None Include="res\shaders\fragment.glsl" />
     <None Include="res\shaders\vertex.glsl" />
   </ItemGroup>

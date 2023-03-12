@@ -1,23 +1,34 @@
+/*
+* TODO:
+* - use compute shaders for creating the mesh and terrain generation
+*   - figure out how tf SSBOs work
+* - imgui implementation
+* - better terrain
+* - player controller
+* - terraforming
+* ...
+* - loading chunks near the player only
+*/
+
 #pragma comment(lib, "glfw3_mt")
 #pragma comment(lib, "glew32s")
 #pragma comment(lib, "opengl32")
 
+#include <Windows.h>
+#include <chrono>
 #include "renderer.h"
 #include "camera.h"
 #include "marching_cubes.h"
 #include "game.h"
-#include <Windows.h>
-#include <chrono>
-#include "vendor/noise/perlin.h"
-extern "C" {
-#include "vendor/noise/noise1234.h"
-}
 
 struct Chunk {
 	MarchingCubes mc;
 	unsigned int vao, vbo;
-	void Init(const World grid, int x, int y) {
-		mc.CreateMeshData(grid, x * CHUNK_WIDTH, y * CHUNK_WIDTH);
+	void Init(int x, int y, bool generate_cells = 0) {
+		mc.AllocCellMem();
+		if (generate_cells)
+			mc.GenerateCells(x * CHUNK_WIDTH, y * CHUNK_WIDTH);
+		mc.CreateMeshData(x * CHUNK_WIDTH, y * CHUNK_WIDTH);
 		vao = gfx::CreateVAO();
 		vbo = gfx::CreateVBO((float*)mc.vertices.data(), mc.vertices.size() * 3);
 		gfx::InitLayout();
@@ -26,51 +37,72 @@ struct Chunk {
 		gfx::BindVAO(vao);
 		glDrawArrays(GL_TRIANGLES, 0, mc.vertices.size());
 	}
-	void UpdateGeom() {
+	void UpdateGeom(int x, int y) {
+		mc.CreateMeshData(x * CHUNK_WIDTH, y * CHUNK_WIDTH);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, mc.vertices.size() * sizeof(glm::vec3), mc.vertices.data(), GL_DYNAMIC_DRAW);
 	}
 };
 
-void CreateWorld(World &world) {
-	// Allocate memory
-	world = (Cell***)malloc(sizeof(Cell**) * (WORLD_WIDTH + 1));
-	for (int i = 0; i < WORLD_WIDTH + 1; i++) {
-		world[i] = (Cell**)malloc(sizeof(Cell*) * (WORLD_HEIGHT + 1));
-		for (int j = 0; j < WORLD_HEIGHT + 1; j++) {
-			world[i][j] = (Cell*)malloc(sizeof(Cell) * (WORLD_WIDTH + 1));
-			memset(world[i][j], 0, sizeof(Cell) * (WORLD_WIDTH + 1));
-		}
-	}
+void LoadChunks(Chunk* chunks) {
+	FILE* file;
+	fopen_s(&file, SAVE_FILE_PATH, "rb");
+	if (!file) return;
 
-	// Terrain generation
-	for (int x = 0; x < WORLD_WIDTH + 1; x++) {
-		for (int z = 0; z < WORLD_WIDTH + 1; z++) {
-			for (int y = 0; y < WORLD_HEIGHT + 1; y++) {
-				//float height = 10*noise3(x / 12.0f, y / 12.0f, z/ 12.0f);
-				float height = 20+ 4*noise2(x / 11.0f, z/ 11.0f) - y;
-				height = glm::clamp(height, -1.0f, 1.0f);
-				BYTE value = (BYTE)((float)(height+1) * 127.0);
-				world[x][y][z].terrain = value;
+	const int chunk_num_x = WORLD_WIDTH / CHUNK_WIDTH;
+	const int chunk_num_y = WORLD_HEIGHT / CHUNK_HEIGHT;
+	const int chunk_len = sizeof(Cell) * (CHUNK_WIDTH+1) * (CHUNK_HEIGHT+1) * (CHUNK_WIDTH+1); // refers to *cells size
+	const int len = chunk_len * chunk_num_y * chunk_num_x * chunk_num_x;
+	BYTE* buf = (BYTE*)malloc(len);
+	if (!buf) return;
+
+	fread(buf, 1, len, file);
+
+	for (int i = 0; i < chunk_num_x; i++) {
+		for (int j = 0; j < chunk_num_y; j++) {
+			for (int k = 0; k < chunk_num_x; k++) {
+				BYTE* this_chunk = buf + (k * chunk_num_x + i)*chunk_len;
+				memcpy(chunks[k * chunk_num_x + i].mc.cells, this_chunk, chunk_len);
 			}
 		}
 	}
+
+	free(buf);
+	fclose(file);
+}
+
+void SaveChunks(Chunk* chunks) {
+	FILE* file;
+	fopen_s(&file, SAVE_FILE_PATH, "wb");
+	if (!file) return;
+	
+	const int chunk_num_x = WORLD_WIDTH / CHUNK_WIDTH;
+	const int chunk_num_y = WORLD_HEIGHT / CHUNK_HEIGHT;
+	
+	std::vector<BYTE> data;
+
+	for (int i = 0; i < chunk_num_x; i++)
+		for (int j = 0; j < chunk_num_y; j++)
+			for (int k = 0; k < chunk_num_x; k++)
+				chunks[k*chunk_num_x+i].mc.SaveAsBinary(&data);
+	//__debugbreak();
+	fwrite(data.data(), 1, data.size(), file);
+	fclose(file);
 }
 
 int main() {
 	Window window = gfx::Init("Hey biatchhh", 800, 600);
 	gfx::Shader shader("res/shaders/vertex.glsl", "res/shaders/fragment.glsl");
 
-	World grid;
-	CreateWorld(grid);
-
 	const int chunk_num = WORLD_WIDTH / CHUNK_WIDTH;
-	Chunk chunks[chunk_num][chunk_num];
-	for (int i = 0; i < chunk_num; i++) {
-		for (int j = 0; j < chunk_num; j++) {
-			chunks[i][j].Init(grid, i, j);
-		}
-	}
+	Chunk chunks[chunk_num*chunk_num];
+	for (int i = 0; i < chunk_num; i++)
+		for (int j = 0; j < chunk_num; j++)
+			chunks[j*chunk_num+i].Init(i, j);
+	LoadChunks(chunks);
+	for (int i = 0; i < chunk_num; i++)
+		for (int j = 0; j < chunk_num; j++)
+			chunks[j * chunk_num + i].UpdateGeom(i, j);
 
 	Camera camera;
 	camera.Position = glm::vec3(WORLD_WIDTH / 2.0f, CHUNK_HEIGHT * 0.75f, WORLD_WIDTH / 2.0f);
@@ -109,6 +141,10 @@ int main() {
 			camera.MovementSpeed = SPEED * 2.0f;
 		else
 			camera.MovementSpeed = SPEED;
+		if (GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState('S')) {
+			SaveChunks(chunks);
+		}
+
 		camera.ProcessMouseMovement(deltaMouseX, deltaMouseY);
 		view = camera.GetViewMatrix();
 
@@ -120,7 +156,7 @@ int main() {
 		// Chunks
 		for (int i = 0; i < chunk_num; i++) {
 			for (int j = 0; j < chunk_num; j++) {
-				chunks[i][j].Draw(shader);
+				chunks[j*chunk_num+i].Draw(shader);
 			}
 		}
 		gfx::EndFrame(window);

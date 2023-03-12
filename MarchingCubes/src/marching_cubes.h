@@ -3,7 +3,9 @@
 
 #include <vector>
 #include "game.h"
-
+extern "C" {
+#include "vendor/noise/noise1234.h"
+}
 static const glm::vec3 CornerTable[] = {
 		{ 0, 0, 0 },
 		{ 1, 0, 0 },
@@ -297,16 +299,17 @@ public:
 	Cell* cells;
 	void AllocCellMem() {
 		cells = (Cell*)malloc(sizeof(Cell) * (CHUNK_WIDTH+1) * (CHUNK_HEIGHT+1) * (CHUNK_WIDTH+1));
+		memset(cells, 0, sizeof(Cell) * (CHUNK_WIDTH + 1) * (CHUNK_HEIGHT + 1) * (CHUNK_WIDTH + 1));
 	}
 	void GenerateCells(int x0, int y0) {
-		for (int x = 0; x < CHUNK_WIDTH + 1; x++) {
-			for (int z = 0; z < CHUNK_WIDTH + 1; z++) {
-				for (int y = 0; y < CHUNK_HEIGHT + 1; y++) {
-					//float height = 10*noise3(x / 12.0f, y / 12.0f, z/ 12.0f);
-					float height = 20 + 4 * noise2(x / 11.0f, z / 11.0f) - y;
+		for (int x = 0; x < CHUNK_WIDTH+1; x++) {
+			for (int y = 0; y < CHUNK_HEIGHT+1; y++) {
+				for (int z = 0; z < CHUNK_WIDTH+1; z++) {
+					//float height = 10*noise3((x+x0) / 12.0f, y / 12.0f, (z+y0)/ 12.0f);
+					float height = 10 + 4 * noise2((x+x0) / 11.0f, (z+y0) / 11.0f) - y;
 					height = glm::clamp(height, -1.0f, 1.0f);
 					BYTE value = (BYTE)((float)(height + 1) * 127.0);
-					cells[x][y][z].terrain = value;
+					cells[z*(CHUNK_WIDTH+1)*(CHUNK_HEIGHT+1) + y* (CHUNK_WIDTH + 1) + x].terrain = value;
 				}
 			}
 		}
@@ -319,12 +322,12 @@ public:
 				for (int z = 0; z < CHUNK_WIDTH; z++) {
 					BYTE cube[8];
 					for (int i = 0; i < 8; i++) {
-						glm::vec3 corner = glm::vec3(x0 + x, y, z0 + z) + CornerTable[i];
-						Cell c = grid[(int)corner.x][(int)corner.y][(int)corner.z];
+						glm::vec3 corner = glm::vec3(x, y, z) + CornerTable[i];
+						Cell c = cells[(int)corner.z * (CHUNK_WIDTH + 1) * (CHUNK_HEIGHT+ 1) + (int)corner.y * (CHUNK_WIDTH + 1) + (int)corner.x];
 						cube[i] = c.terrain;
 					}
 					// Pass the value into our MarchCube function.
-					MarchCube(glm::vec3(x0 + x, y, z0 + z), cube);
+					MarchCube(glm::vec3(x+x0, y, z+z0), cube);
 				}
 			}
 		}
@@ -399,5 +402,10 @@ public:
 	}
 	void ClearMeshData() {
 		vertices.clear();
+	}
+
+	void SaveAsBinary(std::vector<unsigned char> *data) {
+		int cells_size = (CHUNK_WIDTH+1) * (CHUNK_HEIGHT+1) * (CHUNK_WIDTH+1);
+		data->insert(data->end(), (unsigned char*)cells, (unsigned char*)(cells + cells_size));
 	}
 };
